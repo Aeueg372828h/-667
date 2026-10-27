@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>AviaJary — Поиск авиабилетов</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        html { -webkit-text-size-adjust: 100%; }
+        body { background: #0b1120; color: #f8fafc; padding-bottom: calc(76px + env(safe-area-inset-bottom)); overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
+        button { touch-action: manipulation; }
+ 
+        
+        .header { background: linear-gradient(135deg, #1e293b, #0f172a); padding: 20px; border-bottom: 1px solid #1e293b; display: flex; justify-content: space-between; align-items: center; }
+        .user-info { display: flex; align-items: center; gap: 10px; }
+        .avatar { width: 40px; height: 40px; background: #2563eb; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px; color: white; }
+        .balance-card { text-align: right; }
+        .balance-label { font-size: 11px; color: #94a3b8; text-transform: uppercase; }
+        .balance-val { font-size: 18px; font-weight: bold; color: #38bdf8; }
+ 
+        .container { padding: 15px; max-width: 500px; margin: auto; }
+        
+        
+        .card { background: #1e293b; border-radius: 16px; padding: 16px; margin-bottom: 20px; border: 1px solid #334155; }
+        .card-title { font-size: 16px; font-weight: bold; margin-bottom: 12px; color: #f8fafc; display: flex; justify-content: space-between; align-items: center; }
+ 
+        
+        label { font-size: 12px; color: #94a3b8; display: block; margin-top: 8px; }
+        input, select { width: 100%; min-width: 0; padding: 12px; margin-top: 4px; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 10px; font-size: 16px; outline: none; }
+        input[type="date"] { display: block; -webkit-appearance: none; appearance: none; min-height: 48px; text-align: left; color-scheme: dark; }
+        input[type="date"]::-webkit-date-and-time-value { text-align: left; margin: 0; }
+        input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0.7; }
+        .dates-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; width: 100%; }
+        .dates-row > div { min-width: 0; }
+        .btn-primary { width: 100%; padding: 14px; background: #2563eb; color: white; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; margin-top: 15px; font-size: 16px; }
+ 
+        
+        .filters-bar { display: none; gap: 8px; margin: 15px 0 5px 0; overflow-x: auto; padding-bottom: 5px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+        .filters-bar::-webkit-scrollbar { display: none; }
+        .filter-chip { flex-shrink: 0; background: #1e293b; border: 1px solid #334155; color: #cbd5e1; padding: 6px 12px; border-radius: 20px; font-size: 12px; white-space: nowrap; cursor: pointer; }
+        .filter-chip.active { background: #2563eb; color: white; border-color: #2563eb; }
+ 
+        
+        .flight-card { background: #0f172a; border-radius: 14px; padding: 14px; margin-top: 12px; border: 1px solid #334155; position: relative; }
+        .flight-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+        .airline-title { font-weight: bold; font-size: 13px; color: #94a3b8; min-width: 0; overflow-wrap: anywhere; }
+        .route-title { font-size: 16px; font-weight: bold; color: #f8fafc; margin: 4px 0; }
+        .flight-dates-tag { font-size: 11px; color: #38bdf8; background: rgba(56, 189, 248, 0.1); padding: 3px 8px; border-radius: 6px; display: inline-block; margin-bottom: 6px; }
+        .flight-time-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px 8px; font-size: 14px; color: #cbd5e1; margin: 8px 0; }
+        .flight-duration { font-size: 11px; color: #94a3b8; text-align: center; background: #1e293b; padding: 3px 8px; border-radius: 6px; white-space: nowrap; }
+        .flight-bottom { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 10px; padding-top: 8px; border-top: 1px dashed #334155; }
+        .flight-price { font-size: 18px; font-weight: bold; color: #4ade80; }
+        .fav-btn { background: none; border: none; cursor: pointer; padding: 4px; line-height: 0; color: #64748b; transition: color .2s; }
+        .fav-btn svg { width: 24px; height: 24px; fill: currentColor; display: block; }
+        .fav-btn.active { color: #ef4444; }
+        .fav-btn.pop svg { animation: heartPop .35s ease; }
+        @keyframes heartPop { 0% { transform: scale(1); } 50% { transform: scale(1.35); } 100% { transform: scale(1); } }
+        @media (prefers-reduced-motion: reduce) { .fav-btn.pop svg { animation: none; } }
+ 
+        
+        .tour-card { background: #0f172a; border-radius: 14px; margin-top: 12px; border: 1px solid #334155; overflow: hidden; }
+        .tour-cover { height: 84px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-size: 40px; }
+        .tour-cover.beach { background: linear-gradient(135deg, #0e7490, #38bdf8); }
+        .tour-cover.city { background: linear-gradient(135deg, #4c1d95, #818cf8); }
+        .tour-cover.mountains { background: linear-gradient(135deg, #14532d, #4ade80); }
+ 
+        
+        .tour-banner { position: relative; height: 150px; border-radius: 12px; overflow: hidden; margin-bottom: 14px; display: flex; align-items: flex-end; background-size: cover; background-position: center; }
+        .tour-banner.beach { background-image: linear-gradient(180deg, rgba(15,23,42,0) 40%, rgba(15,23,42,0.7)), url('/static/beach.webp'), linear-gradient(135deg, #0e7490, #38bdf8); }
+        .tour-banner.city { background-image: linear-gradient(180deg, rgba(15,23,42,0) 40%, rgba(15,23,42,0.7)), url('/static/city.webp'), linear-gradient(135deg, #4c1d95, #818cf8); }
+        .tour-banner.mountains { background-image: linear-gradient(180deg, rgba(15,23,42,0) 40%, rgba(15,23,42,0.7)), url('/static/mountains.webp'), linear-gradient(135deg, #14532d, #4ade80); }
+        .tour-banner.all { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px; background: #0f172a; }
+        .tour-banner.all .part { background-size: cover; background-position: center; }
+        .tour-banner.all .part.beach { background-image: url('/static/beach.webp'), linear-gradient(135deg, #0e7490, #38bdf8); }
+        .tour-banner.all .part.city { background-image: url('/static/city.webp'), linear-gradient(135deg, #4c1d95, #818cf8); }
+        .tour-banner.all .part.mountains { background-image: url('/static/mountains.webp'), linear-gradient(135deg, #14532d, #4ade80); }
+        .tour-banner-text { position: absolute; left: 14px; right: 14px; bottom: 12px; color: #f8fafc; text-shadow: 0 1px 6px rgba(0,0,0,0.6); }
+        .tour-banner-text b { font-size: 17px; display: block; }
+        .tour-banner-text span { font-size: 12px; opacity: 0.9; }
+        .tour-nights { font-size: 12px; font-weight: bold; background: rgba(15, 23, 42, 0.55); color: #f8fafc; padding: 4px 10px; border-radius: 20px; }
+        .tour-body { padding: 14px; }
+        .tour-title { font-size: 16px; font-weight: bold; }
+        .tour-sub { font-size: 12px; color: #94a3b8; margin-top: 3px; }
+        .tour-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+        .tour-tag { font-size: 11px; color: #cbd5e1; background: #1e293b; border: 1px solid #334155; padding: 3px 8px; border-radius: 6px; }
+        .tour-price-label { font-size: 11px; color: #94a3b8; }
+        .tours-note { font-size: 11px; color: #94a3b8; margin-top: 10px; text-align: center; }
+        .filters-bar.visible { display: flex; }
+        .select-btn { background: #2563eb; color: white; border: none; padding: 10px 16px; white-space: nowrap; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px; }
+ 
+       
+        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 1000; align-items: center; justify-content: center; padding: 20px; overflow-y: auto; }
+        .boarding-pass { background: linear-gradient(135deg, #1e3a8a, #2563eb); border-radius: 20px; color: white; padding: 20px; width: 100%; max-width: 360px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); position: relative; overflow: hidden; }
+        .bp-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px rgba(255,255,255,0.2) solid; padding-bottom: 10px; margin-bottom: 15px; }
+        .bp-title { font-weight: bold; font-size: 14px; letter-spacing: 1px; }
+        .bp-route { display: flex; justify-content: space-between; align-items: center; margin: 15px 0; text-align: center; }
+        .bp-city { font-size: 22px; font-weight: 800; }
+        .bp-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; background: rgba(0,0,0,0.25); padding: 12px; border-radius: 12px; margin: 15px 0; text-align: center; }
+        .bp-label { font-size: 10px; color: #93c5fd; text-transform: uppercase; }
+        .bp-val { font-size: 14px; font-weight: bold; margin-top: 2px; }
+        .bp-barcode { background: white; padding: 10px; border-radius: 8px; text-align: center; margin-top: 15px; }
+        .barcode-img { width: 100%; height: 40px; background: repeating-linear-gradient(90deg, #000, #000 2px, #fff 2px, #fff 4px, #000 4px, #000 7px); }
+        .close-bp { width: 100%; background: #0f172a; color: white; border: none; padding: 12px; border-radius: 10px; font-weight: bold; margin-top: 15px; cursor: pointer; }
+ 
+        .confirm-card { background: #1e293b; border-radius: 16px; padding: 20px; width: 100%; max-width: 360px; border: 1px solid #334155; }
+ 
+        
+        .board-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #334155; }
+        .status-badge { font-size: 11px; padding: 4px 8px; border-radius: 6px; font-weight: bold; }
+        .status-ok { background: rgba(74, 222, 128, 0.2); color: #4ade80; }
+        .status-wait { background: rgba(250, 204, 21, 0.2); color: #facc15; }
+ 
+       
+        .navbar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 900; background: #1e293b; display: flex; justify-content: space-around; padding: 10px 0 calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid #334155; }
+        .nav-item { text-align: center; color: #94a3b8; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; flex: 1; min-width: 0; }
+        .nav-item.active { color: #38bdf8; font-weight: bold; }
+        .nav-icon { font-size: 18px; display: block; margin-bottom: 2px; }
+ 
+        @media (max-width: 380px) {
+            .container { padding: 10px; }
+            .header { padding: 14px; }
+            .balance-val { font-size: 16px; }
+            .card { padding: 14px; }
+            .route-title { font-size: 15px; }
+        }
+ 
+        
+        .profile-hero { text-align: center; padding: 26px 16px 20px; background: linear-gradient(160deg, #1e3a8a 0%, #1e293b 70%); }
+        .profile-avatar { width: 84px; height: 84px; font-size: 34px; margin: 0 auto 12px; background-size: cover; background-position: center; border: 3px solid rgba(255,255,255,0.25); }
+        .profile-username { font-size: 13px; color: #93c5fd; margin-top: 3px; min-height: 16px; }
+        .level-badge { display: inline-block; margin-top: 12px; padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: bold; background: rgba(15, 23, 42, 0.55); border: 1px solid currentColor; }
+        .level-bronze { color: #fb923c; } .level-silver { color: #cbd5e1; } .level-gold { color: #facc15; } .level-platinum { color: #67e8f9; }
+        .balance-big { display: flex; justify-content: space-between; align-items: center; }
+        .balance-big .amount { font-size: 26px; font-weight: bold; color: #38bdf8; margin-top: 4px; }
+        .stats-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 20px; }
+        .stat-box { background: #1e293b; border: 1px solid #334155; border-radius: 14px; padding: 14px 6px; text-align: center; cursor: pointer; }
+        .stat-num { font-size: 22px; font-weight: bold; color: #f8fafc; }
+        .stat-label { font-size: 11px; color: #94a3b8; margin-top: 3px; }
+        .progress-track { height: 8px; background: #0f172a; border-radius: 8px; overflow: hidden; margin-top: 12px; border: 1px solid #334155; }
+        .progress-fill { height: 100%; width: 0; background: linear-gradient(90deg, #2563eb, #38bdf8); border-radius: 8px; transition: width .6s ease; }
+        .club-row { display: flex; justify-content: space-between; align-items: baseline; }
+        .club-miles { font-size: 22px; font-weight: bold; color: #facc15; }
+        .club-hint { font-size: 12px; color: #94a3b8; margin-top: 8px; }
+        .menu-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 2px; border-bottom: 1px solid #334155; cursor: pointer; font-size: 14px; }
+        .menu-row:last-child { border-bottom: none; padding-bottom: 2px; }
+        .menu-row .chev { color: #64748b; font-size: 18px; }
+        .menu-count { font-size: 12px; color: #94a3b8; margin-right: 8px; }
+ 
+        .page { display: none; }
+        .page.active { display: block; }
+    </style>
+</head>
+<body>
+ 
+    
+    <div class="header">
+        <div class="user-info">
+            <div class="avatar" id="userAvatar">P</div>
+            <div>
+                <div style="font-weight: bold; font-size: 15px;" id="userName">Пахан</div>
+                <div style="font-size: 11px; color: #94a3b8;">Kaspi Gold</div>
+            </div>
+        </div>
+        <div class="balance-card">
+            <div class="balance-label">Баланс</div>
+            <div class="balance-val" id="userBalance">1 000 000 ₸</div>
+        </div>
+    </div>
+ 
+    <div class="container">
+ 
+        
+        <div id="page-search" class="page active">
+            <div class="card">
+                <div class="card-title">🔍 Поиск авиабилетов</div>
+                
+                <label>Откуда</label>
+                <input type="text" id="origin" value="Алматы">
+ 
+                <label>Куда</label>
+                <input type="text" id="destination" value="Москва">
+ 
+                <div class="dates-row">
+                    <div>
+                        <label>Туда</label>
+                        <input type="date" id="departDate">
+                    </div>
+                    <div>
+                        <label>Обратно</label>
+                        <input type="date" id="returnDate">
+                    </div>
+                </div>
+ 
+                <button class="btn-primary" id="searchBtn">Найти рейсы</button>
+ 
+                <div class="filters-bar" id="filtersBar">
+                    <div class="filter-chip active" id="chip-cheap" onclick="applySort('cheap')">💰 Дешевле → Дороже</div>
+                    <div class="filter-chip" id="chip-fast" onclick="applySort('fast')">⚡ Быстрее</div>
+                    <div class="filter-chip" id="chip-direct" onclick="applySort('direct')">🎯 Прямые</div>
+                </div>
+            </div>
+ 
+            <div id="searchResults"></div>
+ 
+            <div class="card">
+                <div class="card-title">
+                    <span>📡 Онлайн-табло рейсов</span>
+                    <span style="font-size: 11px; color: #4ade80;">● Live</span>
+                </div>
+                <div id="boardResults">
+                    <p style="text-align: center; color: #94a3b8; font-size: 13px;">Загрузка табло...</p>
+                </div>
+            </div>
+        </div>
+ 
+        
+        <div id="page-tours" class="page">
+            <div class="card">
+                <div class="card-title">🌴 Туры</div>
+                <div class="tour-banner all" id="tourBanner"></div>
+                <div class="filters-bar visible" id="tourFilters" style="margin-top: 0;">
+                    <div class="filter-chip active" data-cat="all" onclick="setTourCategory('all', this)">Все</div>
+                    <div class="filter-chip" data-cat="beach" onclick="setTourCategory('beach', this)">🏖 Пляж</div>
+                    <div class="filter-chip" data-cat="city" onclick="setTourCategory('city', this)">🏙 Города</div>
+                    <div class="filter-chip" data-cat="mountains" onclick="setTourCategory('mountains', this)">⛰ Горы</div>
+                </div>
+                <div id="toursResults">
+                    <p style="text-align: center; color: #94a3b8; padding: 20px 0;">Загрузка туров...</p>
+                </div>
+                <div class="tours-note">Демо-предложения. Цены указаны за одного человека.</div>
+            </div>
+        </div>
+ 
+        
+        <div id="page-favs" class="page">
+            <div class="card">
+                <div class="card-title">❤️ Избранные рейсы</div>
+                <div id="favsResults">
+                    <p style="text-align: center; color: #94a3b8; padding: 20px 0;">У вас пока нет сохраненных рейсов</p>
+                </div>
+            </div>
+        </div>
+ 
+        
+        <div id="page-tickets" class="page">
+            <div class="card">
+                <div class="card-title">🎫 Мои активные билеты</div>
+                <div id="ticketsResults">
+                    <p style="text-align: center; color: #94a3b8; padding: 20px 0;">Купленных билетов нет</p>
+                </div>
+            </div>
+        </div>
+ 
+        
+        <div id="page-profile" class="page">
+            <div class="card profile-hero">
+                <div class="avatar profile-avatar" id="profileAvatar">P</div>
+                <h3 id="profileName">Пахан</h3>
+                <div class="profile-username" id="profileUsername"></div>
+                <div class="level-badge level-bronze" id="profileLevel">Bronze</div>
+            </div>
+ 
+            <div class="card balance-big">
+                <div>
+                    <div style="font-size: 12px; color: #94a3b8;">Баланс Kaspi Gold</div>
+                    <div class="amount" id="profileBalance">1 000 000 ₸</div>
+                </div>
+                <div style="font-size: 34px;">💳</div>
+            </div>
+ 
+            <div class="stats-row">
+                <div class="stat-box" onclick="goTo('tickets')"><div class="stat-num" id="statFlights">0</div><div class="stat-label">✈️ Билетов</div></div>
+                <div class="stat-box" onclick="goTo('tickets')"><div class="stat-num" id="statTours">0</div><div class="stat-label">🌴 Туров</div></div>
+                <div class="stat-box" onclick="goTo('favs')"><div class="stat-num" id="statFavs">0</div><div class="stat-label">❤️ В избранном</div></div>
+            </div>
+ 
+            <div class="card">
+                <div class="club-row">
+                    <div class="card-title" style="margin-bottom: 0;">Клуб AviaJary</div>
+                    <div class="club-miles"><span id="clubMiles">0</span> миль</div>
+                </div>
+                <div class="progress-track"><div class="progress-fill" id="clubProgress"></div></div>
+                <div class="club-hint" id="clubHint">Покупайте билеты и туры, чтобы копить мили.</div>
+            </div>
+ 
+            <div class="card" style="margin-bottom: 0;">
+                <div class="menu-row" onclick="goTo('tickets')"><span>🎫 Мои билеты</span><span><span class="menu-count" id="menuTickets"></span><span class="chev">›</span></span></div>
+                <div class="menu-row" onclick="goTo('favs')"><span>❤️ Избранные рейсы</span><span><span class="menu-count" id="menuFavs"></span><span class="chev">›</span></span></div>
+                <div class="menu-row" onclick="goTo('tours')"><span>🌴 Подобрать тур</span><span class="chev">›</span></div>
+            </div>
+        </div>
+    </div>
+ 
+    
+    <div class="modal" id="confirmModal">
+        <div class="confirm-card">
+            <h3 style="margin-bottom: 10px;" id="confirmTitle">Бронирование билета</h3>
+            <div id="confirmDetails" style="font-size: 14px; color: #cbd5e1; margin-bottom: 20px; line-height: 1.5;"></div>
+            <button class="btn-primary" style="margin-top: 0;" onclick="confirmPurchase()">Оплатить с Kaspi Gold</button>
+            <button class="close-bp" style="margin-top: 8px; background: transparent; border: 1px solid #334155;" onclick="closeConfirmModal()">Отмена</button>
+        </div>
+    </div>
+ 
+    
+    <div class="modal" id="bpModal">
+        <div class="boarding-pass">
+            <div class="bp-header">
+                <span class="bp-title">✈️ BOARDING PASS</span>
+                <span style="font-size: 12px; opacity: 0.8;" id="bpAirline">Air Astana</span>
+            </div>
+            
+            <div style="font-size: 11px; color: #93c5fd;">ПАССАЖИР</div>
+            <div style="font-size: 16px; font-weight: bold;" id="bpPassenger">ПАХАН</div>
+ 
+            <div class="bp-route">
+                <div>
+                    <div class="bp-city" id="bpFrom">ALA</div>
+                    <div style="font-size: 11px; opacity: 0.8;" id="bpOrigin">Алматы</div>
+                </div>
+                <div style="font-size: 24px;">✈️</div>
+                <div>
+                    <div class="bp-city" id="bpTo">MOW</div>
+                    <div style="font-size: 11px; opacity: 0.8;" id="bpDest">Москва</div>
+                </div>
+            </div>
+ 
+            <div class="bp-grid">
+                <div>
+                    <div class="bp-label">ВЫЛЕТ</div>
+                    <div class="bp-val" id="bpTime">15:35</div>
+                </div>
+                <div>
+                    <div class="bp-label">МЕСТО</div>
+                    <div class="bp-val" style="color: #facc15;" id="bpSeat">12A</div>
+                </div>
+                <div>
+                    <div class="bp-label">ГЕЙТ</div>
+                    <div class="bp-val" id="bpGate">A02</div>
+                </div>
+            </div>
+ 
+            <div class="bp-barcode">
+                <div class="barcode-img"></div>
+                <div style="font-size: 10px; color: #333; margin-top: 4px; letter-spacing: 3px;">ETKT 78294018293</div>
+            </div>
+ 
+            <button class="close-bp" onclick="closeBoardingPass()">Закрыть</button>
+        </div>
+    </div>
+ 
+    <!-- NAVBAR -->
+    <div class="navbar">
+        <div class="nav-item active" data-page="search" onclick="switchPage('search', this)">
+            <span class="nav-icon">🔍</span>Поиск
+        </div>
+        <div class="nav-item" data-page="tours" onclick="switchPage('tours', this)">
+            <span class="nav-icon">🌴</span>Туры
+        </div>
+        <div class="nav-item" data-page="favs" onclick="switchPage('favs', this)">
+            <span class="nav-icon">❤️</span>Избранное
+        </div>
+        <div class="nav-item" data-page="tickets" onclick="switchPage('tickets', this)">
+            <span class="nav-icon">🎫</span>Билеты
+        </div>
+        <div class="nav-item" data-page="profile" onclick="switchPage('profile', this)">
+            <span class="nav-icon">👤</span>Профиль
+        </div>
+    </div>
+ 
+    <script>
+        const API_URL = window.location.origin;
+        const tg = window.Telegram?.WebApp;
+ 
+        let balance = 1000000;
+        let myTickets = [];
+        let favFlights = [];
+        try { favFlights = JSON.parse(localStorage.getItem("aviajary_favs") || "[]"); } catch (e) { favFlights = []; }
+ 
+        function saveFavs() {
+            try { localStorage.setItem("aviajary_favs", JSON.stringify(favFlights)); } catch (e) {}
+        }
+ 
+        function favKey(f) {
+            return [f.code, f.origin_code, f.dest_code, f.depart_date, f.return_date || "", f.departure, f.raw_price].join("|");
+        }
+ 
+        function isFav(f) {
+            const k = favKey(f);
+            return favFlights.some(x => favKey(x) === k);
+        }
+ 
+        const HEART_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>';
+ 
+        function flightCardHTML(f, listName, idx) {
+            const liveBadge = f.is_live ? "<span style='color:#4ade80; font-size:10px;'>● Live API</span>" : "";
+            let dateBadge = `📅 ${f.depart_date}`;
+            if (f.return_date) dateBadge += ` ⇄ ${f.return_date}`;
+            const favClass = isFav(f) ? "fav-btn active" : "fav-btn";
+            return `
+                <div class="flight-card">
+                    <div class="flight-header">
+                        <span class="airline-title">${f.logo} ${f.code} — ${f.airline} ${liveBadge}</span>
+                        <button class="${favClass}" aria-label="В избранное" onclick="toggleFav('${listName}', ${idx}, this)">${HEART_SVG}</button>
+                    </div>
+                    <div class="route-title">${f.origin} → ${f.destination}</div>
+                    <div class="flight-dates-tag">${dateBadge}</div>
+                    <div class="flight-time-row">
+                        <span><b>${f.departure}</b> ➔ <b>${f.arrival}</b></span>
+                        <span class="flight-duration">${f.duration}</span>
+                        <span style="font-size: 12px; color: #94a3b8;">${f.stops}</span>
+                    </div>
+                    <div class="flight-bottom">
+                        <span class="flight-price">${f.price} ${f.currency}</span>
+                        <button class="select-btn" onclick="openConfirmModal('${listName}', ${idx})">Выбрать</button>
+                    </div>
+                </div>
+            `;
+        }
+        let currentFlights = [];
+        let shownFlights = [];
+        let tours = [];
+        let toursLoaded = false;
+        let tourCategory = "all";
+        let pendingTour = null;
+        let pendingFlight = null;
+ 
+       
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById("departDate").value = today;
+ 
+        if (tg) {
+            tg.ready();
+            tg.expand();
+            try { tg.setHeaderColor('#0f172a'); tg.setBackgroundColor('#0b1120'); } catch (e) {}
+            if (tg.initDataUnsafe?.user) {
+                const u = tg.initDataUnsafe.user;
+                const name = u.first_name || "Пахан";
+                document.getElementById("userName").innerText = name;
+                document.getElementById("profileName").innerText = name;
+                document.getElementById("userAvatar").innerText = name[0].toUpperCase();
+                document.getElementById("profileAvatar").innerText = name[0].toUpperCase();
+                if (u.username) document.getElementById("profileUsername").innerText = "@" + u.username;
+                if (u.photo_url) {
+                    const av = document.getElementById("profileAvatar");
+                    av.style.backgroundImage = `url('${u.photo_url}')`;
+                    av.innerText = "";
+                }
+            }
+        }
+ 
+        const LEVELS = [
+            { name: "Bronze",   cls: "level-bronze",   from: 0 },
+            { name: "Silver",   cls: "level-silver",   from: 100000 },
+            { name: "Gold",     cls: "level-gold",     from: 500000 },
+            { name: "Platinum", cls: "level-platinum", from: 1000000 }
+        ];
+ 
+        function goTo(pageId) {
+            switchPage(pageId, document.querySelector(`.nav-item[data-page="${pageId}"]`));
+            window.scrollTo(0, 0);
+        }
+ 
+        function renderProfile() {
+            const spent = myTickets.reduce((sum, t) => sum + (t.paid || 0), 0);
+            const flightsCount = myTickets.filter(t => t.kind !== "tour").length;
+            const toursCount = myTickets.filter(t => t.kind === "tour").length;
+ 
+            document.getElementById("statFlights").innerText = flightsCount;
+            document.getElementById("statTours").innerText = toursCount;
+            document.getElementById("statFavs").innerText = favFlights.length;
+            document.getElementById("menuTickets").innerText = myTickets.length ? myTickets.length : "";
+            document.getElementById("menuFavs").innerText = favFlights.length ? favFlights.length : "";
+ 
+            
+            let levelIdx = 0;
+            LEVELS.forEach((l, i) => { if (spent >= l.from) levelIdx = i; });
+            const level = LEVELS[levelIdx];
+            const next = LEVELS[levelIdx + 1];
+ 
+            const badge = document.getElementById("profileLevel");
+            badge.innerText = level.name === "Platinum" ? "💎 Platinum" : `Уровень ${level.name}`;
+            badge.className = `level-badge ${level.cls}`;
+ 
+            document.getElementById("clubMiles").innerText = Math.floor(spent / 100).toLocaleString("ru-RU");
+            const bar = document.getElementById("clubProgress");
+            const hint = document.getElementById("clubHint");
+            if (next) {
+                const pct = Math.min(100, ((spent - level.from) / (next.from - level.from)) * 100);
+                bar.style.width = pct + "%";
+                hint.innerText = `До уровня ${next.name} осталось потратить ${(next.from - spent).toLocaleString("ru-RU")} ₸`;
+            } else {
+                bar.style.width = "100%";
+                hint.innerText = "Вы на максимальном уровне. Спасибо, что летаете с нами!";
+            }
+        }
+ 
+        function updateBalanceUI() {
+            const formatted = balance.toLocaleString("ru-RU") + " ₸";
+            document.getElementById("userBalance").innerText = formatted;
+            document.getElementById("profileBalance").innerText = formatted;
+        }
+ 
+        function switchPage(pageId, el) {
+            document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+            document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
+            document.getElementById(`page-${pageId}`).classList.add("active");
+            el.classList.add("active");
+ 
+            if (pageId === "favs") renderFavs();
+            if (pageId === "profile") renderProfile();
+            if (pageId === "tours" && !toursLoaded) loadTours();
+            if (pageId === "tickets") renderTickets();
+        }
+ 
+        async function loadBoard() {
+            try {
+                const res = await fetch(`${API_URL}/api/board`);
+                const data = await res.json();
+                if (data.success) {
+                    const boardDiv = document.getElementById("boardResults");
+                    boardDiv.innerHTML = "";
+                    data.board.forEach(item => {
+                        const statusClass = item.status === "По расписанию" || item.status === "Посадка" ? "status-ok" : "status-wait";
+                        boardDiv.innerHTML += `
+                            <div class="board-item">
+                                <div>
+                                    <div style="font-weight: bold; font-size: 13px;">${item.flight} — ${item.airline}</div>
+                                    <div style="font-size: 12px; color: #94a3b8;">${item.route} (${item.time})</div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <span class="status-badge ${statusClass}">${item.status}</span>
+                                    <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">Гейт ${item.gate}</div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+            } catch (err) {}
+        }
+ 
+        document.getElementById("searchBtn").addEventListener("click", async () => {
+            const origin = document.getElementById("origin").value;
+            const destination = document.getElementById("destination").value;
+            const depart_date = document.getElementById("departDate").value;
+            const return_date = document.getElementById("returnDate").value;
+            const resDiv = document.getElementById("searchResults");
+ 
+            resDiv.innerHTML = "<p style='text-align:center; color:#38bdf8; margin: 15px 0;'>🔍 Поиск рейсов...</p>";
+            document.getElementById("filtersBar").style.display = "none";
+ 
+            try {
+                const res = await fetch(`${API_URL}/api/search`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ origin, destination, depart_date, return_date })
+                });
+                const data = await res.json();
+ 
+                if (data.success && data.flights.length > 0) {
+                    currentFlights = data.flights;
+                    renderFlightList(currentFlights);
+                    document.getElementById("filtersBar").style.display = "flex";
+                } else {
+                    resDiv.innerHTML = "<p style='color:red; text-align:center;'>Билетов не найдено</p>";
+                }
+            } catch (err) {
+                resDiv.innerHTML = "<p style='color:red; text-align:center;'>Ошибка соединения с сервером</p>";
+            }
+        });
+ 
+        function renderFlightList(flights) {
+            shownFlights = flights;
+            const resDiv = document.getElementById("searchResults");
+            if (flights.length === 0) {
+                resDiv.innerHTML = "<p style='color:#94a3b8; text-align:center; margin: 15px 0;'>По этому фильтру рейсов нет</p>";
+                return;
+            }
+            resDiv.innerHTML = flights.map((f, idx) => flightCardHTML(f, "search", idx)).join("");
+        }
+ 
+        function applySort(type) {
+            document.querySelectorAll(".filter-chip").forEach(c => c.classList.remove("active"));
+            document.getElementById(`chip-${type}`).classList.add("active");
+ 
+            let sorted = [...currentFlights];
+ 
+            if (type === 'cheap') {
+                sorted.sort((a, b) => a.raw_price - b.raw_price);
+            } else if (type === 'fast') {
+                sorted.sort((a, b) => a.duration_minutes - b.duration_minutes);
+            } else if (type === 'direct') {
+                sorted = sorted.filter(f => f.stops.toLowerCase().includes("без"));
+            }
+ 
+            renderFlightList(sorted);
+        }
+ 
+        function openConfirmModal(listName, flightIndex) {
+            pendingTour = null;
+            pendingFlight = (listName === "favs" ? favFlights : shownFlights)[flightIndex];
+            if (!pendingFlight) return;
+ 
+            const routeType = pendingFlight.return_date ? "Туда и обратно" : "В одну сторону";
+            const html = `
+                <b>Рейс:</b> ${pendingFlight.code} (${pendingFlight.airline})<br>
+                <b>Тип:</b> ${routeType}<br>
+                <b>Маршрут:</b> ${pendingFlight.origin} ➔ ${pendingFlight.destination}<br>
+                <b>Дата вылета:</b> ${pendingFlight.depart_date}<br>
+                ${pendingFlight.return_date ? '<b>Дата обратно:</b> ' + pendingFlight.return_date + '<br>' : ''}
+                <b>Время:</b> ${pendingFlight.departure}<br>
+                <b>К оплате:</b> <span style="color:#4ade80; font-weight:bold;">${pendingFlight.price} ₸</span>
+            `;
+            document.getElementById("confirmTitle").innerText = "Бронирование билета";
+            document.getElementById("confirmDetails").innerHTML = html;
+            document.getElementById("confirmModal").style.display = "flex";
+        }
+ 
+        function closeConfirmModal() {
+            document.getElementById("confirmModal").style.display = "none";
+        }
+ 
+        function confirmPurchase() {
+            if (pendingTour) {
+                const t = pendingTour;
+                if (balance < t.price) {
+                    alert("❌ Недостаточно средств на балансе Kaspi!");
+                    return;
+                }
+                balance -= t.price;
+                updateBalanceUI();
+                myTickets.push({
+                    kind: "tour",
+                    title: t.title,
+                    country: t.country,
+                    emoji: t.emoji,
+                    nights: t.nights,
+                    hotel: t.hotel,
+                    price: t.price.toLocaleString("ru-RU"),
+                    paid: t.price
+                });
+                pendingTour = null;
+                closeConfirmModal();
+                alert("🎉 Тур забронирован! Он появится в разделе «Билеты».");
+                return;
+            }
+ 
+            if (!pendingFlight) return;
+            const cost = pendingFlight.raw_price || 35000;
+ 
+            if (balance < cost) {
+                alert("❌ Недостаточно средств на балансе Kaspi!");
+                return;
+            }
+ 
+            balance -= cost;
+            updateBalanceUI();
+ 
+            const seatNum = Math.floor(Math.random() * 25 + 1) + ["A", "B", "C", "D"][Math.floor(Math.random() * 4)];
+            const gateNum = "A0" + Math.floor(Math.random() * 8 + 1);
+ 
+            const newTicket = {
+                kind: "flight",
+                airline: pendingFlight.airline,
+                code: pendingFlight.code,
+                origin: pendingFlight.origin,
+                destination: pendingFlight.destination,
+                origin_code: pendingFlight.origin_code || "ALA",
+                dest_code: pendingFlight.dest_code || "MOW",
+                time: pendingFlight.departure,
+                seat: seatNum,
+                gate: gateNum,
+                price: pendingFlight.price,
+                paid: cost
+            };
+ 
+            myTickets.push(newTicket);
+            closeConfirmModal();
+            alert("🎉 Билет успешно куплен! Вы можете просмотреть его в разделе «Билеты».");
+        }
+ 
+        function showBoardingPass(t) {
+            const passengerName = document.getElementById("userName").innerText.toUpperCase();
+            document.getElementById("bpPassenger").innerText = passengerName;
+            document.getElementById("bpAirline").innerText = t.airline;
+            document.getElementById("bpOrigin").innerText = t.origin;
+            document.getElementById("bpDest").innerText = t.destination;
+            document.getElementById("bpFrom").innerText = t.origin_code;
+            document.getElementById("bpTo").innerText = t.dest_code;
+            document.getElementById("bpTime").innerText = t.time;
+            document.getElementById("bpSeat").innerText = t.seat;
+            document.getElementById("bpGate").innerText = t.gate;
+ 
+            document.getElementById("bpModal").style.display = "flex";
+        }
+ 
+        function closeBoardingPass() {
+            document.getElementById("bpModal").style.display = "none";
+        }
+ 
+        function renderTickets() {
+            const div = document.getElementById("ticketsResults");
+            if (myTickets.length === 0) {
+                div.innerHTML = "<p style='text-align: center; color: #94a3b8; padding: 20px 0;'>Купленных билетов нет</p>";
+                return;
+            }
+            div.innerHTML = myTickets.map((t, idx) => {
+                if (t.kind === "tour") {
+                    return `
+                        <div class="flight-card" style="border-left: 4px solid #38bdf8;">
+                            <div class="airline-title">${t.emoji} Тур — ${t.country}</div>
+                            <div class="route-title">${t.title}</div>
+                            <div style="font-size: 12px; color: #94a3b8; margin-top: 6px; display: flex; justify-content: space-between;">
+                                <span>${t.nights} ночей</span>
+                                <span>${t.hotel}</span>
+                                <span style="color: #4ade80; font-weight: bold;">${t.price} ₸</span>
+                            </div>
+                        </div>
+                    `;
+                }
+                return `
+                    <div class="flight-card" style="border-left: 4px solid #4ade80; cursor: pointer;" onclick="showBoardingPass(myTickets[${idx}])">
+                        <div class="airline-title">✈️ ${t.code} — ${t.airline}</div>
+                        <div class="route-title">${t.origin} ➔ ${t.destination}</div>
+                        <div style="font-size: 12px; color: #94a3b8; margin-top: 6px; display: flex; justify-content: space-between;">
+                            <span>Вылет: <b>${t.time}</b></span>
+                            <span>Место: <b style="color: #facc15;">${t.seat}</b></span>
+                            <span style="color: #38bdf8; font-weight: bold;">Посмотреть билет ➔</span>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+        }
+ 
+        function toggleFav(listName, flightIndex, btn) {
+            const flight = (listName === "favs" ? favFlights : shownFlights)[flightIndex];
+            if (!flight) return;
+ 
+            const k = favKey(flight);
+            const wasFav = isFav(flight);
+ 
+            if (wasFav) {
+                favFlights = favFlights.filter(x => favKey(x) !== k);
+            } else {
+                favFlights.push(flight);
+            }
+            saveFavs();
+            try { tg?.HapticFeedback?.impactOccurred("light"); } catch (e) {}
+ 
+            if (listName === "favs") {
+                renderFavs();   // карточка исчезает из избранного
+                return;
+            }
+            btn.classList.toggle("active", !wasFav);
+            btn.classList.remove("pop");
+            void btn.offsetWidth;
+            if (!wasFav) btn.classList.add("pop");
+        }
+ 
+        function renderFavs() {
+            const div = document.getElementById("favsResults");
+            if (favFlights.length === 0) {
+                div.innerHTML = "<p style='text-align: center; color: #94a3b8; padding: 20px 0;'>Нажмите на сердечко у рейса, чтобы сохранить его здесь</p>";
+                return;
+            }
+            div.innerHTML = favFlights.map((f, idx) => flightCardHTML(f, "favs", idx)).join("");
+        }
+ 
+        
+        async function loadTours() {
+            const div = document.getElementById("toursResults");
+            try {
+                const res = await fetch(`${API_URL}/api/tours`);
+                const data = await res.json();
+                tours = data.tours || [];
+                toursLoaded = true;
+                renderTours();
+            } catch (err) {
+                div.innerHTML = "<div style='text-align:center; padding: 16px 0;'><p style='color:#f87171; margin-bottom: 10px;'>Не удалось загрузить туры</p><button class='select-btn' onclick='loadTours()'>Повторить</button></div>";
+            }
+        }
+ 
+        const TOUR_BANNERS = {
+            beach:     { title: "Пляжные туры", sub: "Море, солнце и тёплый песок" },
+            city:      { title: "Города",       sub: "Огни, улицы и новые впечатления" },
+            mountains: { title: "Горы",         sub: "Свежий воздух и виды на вершины" }
+        };
+ 
+        function renderTourBanner() {
+            const el = document.getElementById("tourBanner");
+            if (tourCategory === "all") {
+                el.className = "tour-banner all";
+                el.innerHTML = `
+                    <div class="part beach"></div><div class="part city"></div><div class="part mountains"></div>
+                    <div class="tour-banner-text"><b>Куда полетим?</b><span>Море, города и горы</span></div>`;
+            } else {
+                const b = TOUR_BANNERS[tourCategory];
+                el.className = "tour-banner " + tourCategory;
+                el.innerHTML = `<div class="tour-banner-text"><b>${b.title}</b><span>${b.sub}</span></div>`;
+            }
+        }
+ 
+        function setTourCategory(cat, el) {
+            tourCategory = cat;
+            document.querySelectorAll("#tourFilters .filter-chip").forEach(c => c.classList.remove("active"));
+            el.classList.add("active");
+            renderTourBanner();
+            if (toursLoaded) renderTours(); else loadTours();
+        }
+ 
+        function renderTours() {
+            const div = document.getElementById("toursResults");
+            const list = tours.filter(t => tourCategory === "all" || t.category === tourCategory);
+            if (list.length === 0) {
+                div.innerHTML = "<p style='text-align: center; color: #94a3b8; padding: 20px 0;'>Туров в этой категории пока нет</p>";
+                return;
+            }
+            div.innerHTML = list.map(t => `
+                <div class="tour-card">
+                    <div class="tour-cover ${t.category}">
+                        <span>${t.emoji}</span>
+                        <span class="tour-nights">${t.nights} ночей</span>
+                    </div>
+                    <div class="tour-body">
+                        <div class="tour-title">${t.title}</div>
+                        <div class="tour-sub">${t.country} • ${"★".repeat(t.stars)} ${t.hotel}</div>
+                        <div class="tour-tags">${t.includes.map(i => `<span class="tour-tag">${i}</span>`).join("")}</div>
+                        <div class="flight-bottom">
+                            <div>
+                                <div class="tour-price-label">от</div>
+                                <span class="flight-price">${t.price.toLocaleString("ru-RU")} ₸</span>
+                            </div>
+                            <button class="select-btn" onclick="openTourModal(${t.id})">Забронировать</button>
+                        </div>
+                    </div>
+                </div>
+            `).join("");
+        }
+ 
+        function openTourModal(tourId) {
+            pendingFlight = null;
+            pendingTour = tours.find(t => t.id === tourId);
+            if (!pendingTour) return;
+            const t = pendingTour;
+            document.getElementById("confirmTitle").innerText = "Бронирование тура";
+            document.getElementById("confirmDetails").innerHTML = `
+                <b>Тур:</b> ${t.title}<br>
+                <b>Страна:</b> ${t.country}<br>
+                <b>Отель:</b> ${"★".repeat(t.stars)} ${t.hotel}<br>
+                <b>Длительность:</b> ${t.nights} ночей<br>
+                <b>Включено:</b> ${t.includes.join(", ")}<br>
+                <b>К оплате:</b> <span style="color:#4ade80; font-weight:bold;">${t.price.toLocaleString("ru-RU")} ₸</span>
+            `;
+            document.getElementById("confirmModal").style.display = "flex";
+        }
+ 
+        renderTourBanner();
+        loadBoard();
+    </script>
+</body>
+</html>
